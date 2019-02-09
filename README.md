@@ -17,4 +17,9 @@ Then inside theLandingiOS directory, run:
 pod install
 ```
 
+### Firebase
+After being made part of the project in Firebase, you can download the `GoogleService-Info.plist` file from [Firebase](https://console.firebase.google.com/project/thelanding-211901/settings/general/ios:example.theLanding) at the bottom of the page. 
+
+You will need to add this file to your project in the main directory `theLandingiOS > theLandingiOS`
+
 You should then be able to run the project from Xcode
