@@ -14,8 +14,15 @@ import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
     
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
+    @IBOutlet weak var mapConstraint: NSLayoutConstraint!
+    @IBOutlet weak var timeConstraint: NSLayoutConstraint!
+    @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
+    @IBOutlet weak var moreInfoBtn: UIButton!
+    
     // location manager
     var locationManager:CLLocationManager!
+
     // user location
     var userLocation:CLLocation!
     // distance to next stop
@@ -28,15 +35,23 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     var schedule: [String]!
     // the map
     @IBOutlet weak var mapView: MKMapView!
+    
     // the display time for next suggested shuttle time
     @IBOutlet weak var displayTime: UILabel!
+    
+    //width of the screen -- will be set in btnClick functions
+    var width: CGFloat = 0.0
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        moreInfoBtn.layer.cornerRadius = 4
+        width = self.view.frame.size.width
+        
         // setup the firebase instance
         let db = Firestore.firestore()
         let settings = db.settings
+        
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
 
@@ -48,12 +63,16 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         findCurrentLocation()
     }
     
+    @IBAction func moreInfoBtnClick(_ sender: UIButton) {
+        // transition to second view
+        performSegue(withIdentifier: "secondViewSeg", sender: self)
+    }
+  
     // This is messy. Get the schedule and locations from Firebase
     // Then modify the retreived data to be in the format you need
     // Assign the member variable 'schedule' to the modified retreived data
     // Change the displayTime text in the UI
     func getFirebaseData(db: Firestore) {
-        
         DispatchQueue.global().async {
             db.collection("locations").getDocuments { (querySnapshot, error) in
                 var myTimes: [String] = []
@@ -68,6 +87,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             }
                         }
                     }
+                    
                     DispatchQueue.main.async {
                         self.schedule = myTimes
 //                        print("myTimes1: \(myTimes[0])")
@@ -160,6 +180,11 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         }
     }
     
+    // Map rendering
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        findCurrentLocation()
+    }
     /* These next to methods are dependent on each other. Code them carefully. */
     
     // Based on the users location, calculate the walking time to the closest shuttle stop.
@@ -192,7 +217,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // then suggest the next time they would be able to make.
     // check the current time and then, according to user location, grab the next time at their location (or near their location)
     func getNextShuttleTime() {
-        
+      
     }
 }
 
