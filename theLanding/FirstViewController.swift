@@ -24,8 +24,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     var closestLocation: (name: String, location: CLLocation, distance: Double)!
     // walking time in minutes to closest shuttle stop
     var travelTime: Double!
+    // the shuttle stop coordinates
+    var shuttleCoordinates: [Double]!
     // the shuttle schedule
     var schedule: [String]!
+    // the database
+    let db = Firestore.firestore()
     // the map
     @IBOutlet weak var mapView: MKMapView!
     // the display time for next suggested shuttle time
@@ -35,7 +39,6 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         super.viewDidLoad()
         
         // setup the firebase instance
-        let db = Firestore.firestore()
         let settings = db.settings
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
@@ -44,7 +47,8 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         displayTime.font = displayTime.font.withSize(25)
         displayTime.text = "Calculating... 🤓"
         updateTime()
-        getFirebaseData(db: db)
+        getFirebaseData()
+//        getCoordinates()
         findCurrentLocation()
     }
     
@@ -52,22 +56,23 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // Then modify the retreived data to be in the format you need
     // Assign the member variable 'schedule' to the modified retreived data
     // Change the displayTime text in the UI
-    func getFirebaseData(db: Firestore) {
+    func getFirebaseData() {
         
         DispatchQueue.global().async {
-            db.collection("locations").getDocuments { (querySnapshot, error) in
+            self.db.collection("locations").document("mc_landing").getDocument { (document, error) in
                 var myTimes: [String] = []
                 if let error = error {
                     print("Error getting documents: \(error)")
                 } else {
-                    for document in querySnapshot!.documents {
-                        let locationTimes = document.data()
-                        for times in locationTimes {
+                    if let document = document, document.exists {
+                        let locationTimes = document.data() //.map(String.init(describing:)) ?? "nil"
+                        for times in locationTimes! {
                             for time in times.value as! [String] {
                                 myTimes.append(time)
                             }
                         }
                     }
+                    
                     DispatchQueue.main.async {
                         self.schedule = myTimes
 //                        print("myTimes1: \(myTimes[0])")
@@ -126,6 +131,29 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         print("Error \(error)")
     }
     
+//    func getCoordinates() {
+//        DispatchQueue.global().async {
+//            self.db.collection("locations").document("coordinates").getDocument { (document, error) in
+//                if let error = error {
+//                    print("Error getting documents: \(error)")
+//                } else {
+//                    if let document = document, document.exists {
+//                        let coordinates = document.data()
+//                        print("coordinates: \(String(describing: coordinates))")
+//                        //                    for times in locationTimes! {
+////                            for time in times.value as! [String] {
+////                                myTimes.append(time)
+////                            }
+////                        }
+//                    }
+////                    DispatchQueue.main.async {
+////
+////                    }
+//                }
+//            }
+//        }
+//    }
+    
     // loop throught the locations and find the closest one to the user
     func getClosestLocation() {
         // we'll need to put these in firebase
@@ -139,6 +167,24 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         ]
         
         DispatchQueue.global().async {
+            self.db.collection("locations").document("coordinates").getDocument { (document, error) in
+                var myTimes: [String] = []
+                if let error = error {
+                    print("Error getting documents: \(error)")
+                } else {
+                    if let document = document, document.exists {
+                        let locationTimes = document.data()
+                        for times in locationTimes! {
+                            for time in times.value as! [String] {
+                                myTimes.append(time)
+                            }
+                        }
+                    }
+                    DispatchQueue.main.async {
+                        
+                    }
+                }
+            }
             // first make a random location that is far, far away
             var tempClosest = ("No where", CLLocation.init(latitude: 24.8560, longitude: -12.7739), 1000000000.00)
             for shuttleStop in locations {
