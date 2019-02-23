@@ -14,21 +14,37 @@ import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
     
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
+    @IBOutlet weak var mapConstraint: NSLayoutConstraint!
+    @IBOutlet weak var timeConstraint: NSLayoutConstraint!
+    @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
+    @IBOutlet weak var moreInfoBtn: UIButton!
+    
     // location manager
     var locationManager:CLLocationManager!
+    
     // the map
     @IBOutlet weak var mapView: MKMapView!
+    
     // the display time for next suggested shuttle time
     @IBOutlet weak var displayTime: UILabel!
+    
     // the shuttle schedule
     var schedule: [String]!
+    
+    //width of the screen -- will be set in btnClick functions
+    var width: CGFloat = 0.0
     
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        moreInfoBtn.layer.cornerRadius = 4
+        width = self.view.frame.size.width
+        
         // setup the firebase instance
         let db = Firestore.firestore()
         let settings = db.settings
+        
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
 
@@ -39,8 +55,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         getFirebaseData(db: db)
     }
     
+    @IBAction func moreInfoBtnClick(_ sender: UIButton) {
+        // transition to second view
+        performSegue(withIdentifier: "secondViewSeg", sender: self)
+    }
+    
     func getFirebaseData(db: Firestore) {
-        
         DispatchQueue.global().async {
             db.collection("locations").getDocuments { (querySnapshot, error) in
                 var myTimes: [String] = []
@@ -55,6 +75,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             }
                         }
                     }
+                    
                     DispatchQueue.main.async {
                         print("myTimes1: \(myTimes[0])")
                         self.schedule = myTimes
@@ -129,7 +150,5 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         super.viewDidAppear(animated)
         findCurrentLocation()
     }
-    
-    
 }
 
