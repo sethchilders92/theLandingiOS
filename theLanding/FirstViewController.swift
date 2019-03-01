@@ -27,8 +27,6 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     var userLocation:CLLocation!
     // distance to next stop
     var metersToShuttleStop: [CLLocationDistance]!
-    // the collection of shuttle location names and coordinates
-//    var locations: [(name: String, coordinates: CLLocation)]!
     // closest stop to the users current location
     var closestLocation: (name: String, location: CLLocation, distance: Double)!
     // walking time in minutes to closest shuttle stop
@@ -65,7 +63,6 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         displayTime.text = "Calculating... 🤓"
         updateTime()
         getFirebaseData()
-//        getCoordinates()
         findCurrentLocation()
     }
     
@@ -87,7 +84,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                     print("Error getting documents: \(error)")
                 } else {
                     if let document = document, document.exists {
-                        let locationTimes = document.data() //.map(String.init(describing:)) ?? "nil"
+                        let locationTimes = document.data()
                         for times in locationTimes! {
                             for time in times.value as! [String] {
                                 myTimes.append(time)
@@ -152,23 +149,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     private func locationManger(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Error \(error)")
     }
-    
-    func getCoordinates() {
-
-    }
 
     // loop throught the locations and find the closest one to the user
     func getClosestLocation() {
-        // we'll need to put these in firebase
-//        let locations = [
-//            ("MC", CLLocation.init(latitude: 43.817830, longitude: -111.784218)),
-//            ("Landing", CLLocation.init(latitude: 43.817204, longitude: -111.794373)),
-//            ("LLot", CLLocation.init(latitude: 43.811734, longitude: -111.782626)),
-//            ("Romney", CLLocation.init(latitude: 43.820142, longitude: -111.784076)),
-//            ("Walmart", CLLocation.init(latitude: 43.8560, longitude: -111.7739)),
-//            ("Broulims", CLLocation.init(latitude: 43.827012, longitude: -111.787335)),
-//        ]
-
         DispatchQueue.global().async {
             // get the 'coordinates' document from firebase with all the locations and their coordinates
             self.db.collection("locations").document("coordinates").getDocument { (document, error) in
