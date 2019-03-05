@@ -58,12 +58,11 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         db.settings = settings
 
         // get the next shuttle time
-        displayTime.font = displayTime.font.withSize(25)
+        displayTime.font = displayTime.font.withSize(35)
         displayTime.text = "Calculating... 🤓"
         // pass in a closure
         getFirebaseData() { returnedTimes in
             self.convertStringsToTimes(tempSchedule: returnedTimes)
-            self.findCurrentLocation()
         }
     }
     
@@ -165,7 +164,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             let lat = coord.latitude
                             let lon = coord.longitude
                             locations.append((name: location.key,
-                                                  coordinates: CLLocation.init(latitude: lat, longitude: lon)))
+                                              coordinates: CLLocation.init(latitude: lat, longitude: lon)))
                         }
                         // make a random location that is far, far away
                         var tempClosest = ("No where", CLLocation.init(latitude: 24.8560, longitude: -12.7739), 1000000000.00)
@@ -197,8 +196,10 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // Based on the users location, calculate the walking time to the closest shuttle stop.
     func getWalkingTime() {
         // set the source and destination coordinates
-        let sourceCoordinates = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude, longitude: userLocation.coordinate.longitude)
-        let destinationCoordinates = CLLocationCoordinate2D(latitude: closestLocation.1.coordinate.latitude, longitude: closestLocation.1.coordinate.longitude)
+        let sourceCoordinates = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude,
+                                                       longitude: userLocation.coordinate.longitude)
+        let destinationCoordinates = CLLocationCoordinate2D(latitude: closestLocation.1.coordinate.latitude,
+                                                            longitude: closestLocation.1.coordinate.longitude)
         
         // create a request for Apple Servers to calculate the ETA to walk to the closest shuttle stop
         let request = MKDirections.Request()
@@ -212,41 +213,14 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         directions.calculateETA(completionHandler: { response, error in
             // if the request was successful and there is an arrival time
             if ((response?.expectedTravelTime) != nil) {
-                self.travelTime = (response?.expectedTravelTime)! / 60.00
+                self.travelTime = (response?.expectedTravelTime)!
                 print("ETA: \(String(describing: self.travelTime))")
-//                self.convertStringsToTimes()
+                self.getNextShuttleTime()
             } else {
                 print("Error calculating ETA!")
             }
         })
     }
-    
-    // if using a date obj in firebase
-//    func convertStringsToTimes(tempSchedule: [Timestamp]) {
-//        DispatchQueue.global().async {
-//            // you can probably convert this to be a map function
-//            var tupleArray = [(Timestamp, String)]()
-//            for time in tempSchedule {
-//                let date = time.dateValue()
-//                let calendar = Calendar.current
-//                let hour = String(calendar.component(.hour, from: date))
-//                var minutes = String(calendar.component(.minute, from: date))
-//
-//                // determine the postfix
-//                let postfix = Int(hour)! >= 12 ? "pm" : "am"
-//
-//                // add the leading zero if the minutes are single digits
-//                if (minutes.count == 1) {
-//                    minutes = "0\(minutes)"
-//                }
-//                tupleArray.append((time, "\(Int(hour)! > 12 ? Int(hour)!-12 : Int(hour)!):\(minutes) \(postfix)"))
-//            }
-//            DispatchQueue.main.async {
-//                self.schedule = tupleArray
-//                self.getNextShuttleTime()
-//            }
-//        }
-//    }
     
     func convertStringsToTimes(tempSchedule: [String]) {
         DispatchQueue.global().async {
@@ -261,15 +235,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                 let postfix = hour! >= 12 ? "pm" : "am"
                 
                 // add the leading zero if the minutes are single digits
-                var minuteString = String(minutes!)
-                if (minutes! < 10) {
-                    minuteString = "0\(minutes!)"
-                }
+                let minuteString = minutes! < 10 ? String("0\(minutes!)") : String(minutes!)
+                
                 // make the time 12h base instead of 24h base & add the leading zero if necessary
                 var hourString = String(hour! > 12 ? hour!-12 : hour!)
-                if (hour! < 10) {
-                    hourString = "0\(hour!)"
-                }
+                // if the hour is single a single diget, add a leading zero
+                hourString = Int(hourString)! < 10 ? "0\(hourString)" : hourString
                 
                 // create the new display time string with the postfix (am/pm)
                 let displayString = "\(hourString):\(minuteString) \(postfix)"
@@ -280,7 +251,8 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             
             DispatchQueue.main.async {
                 self.schedule = secondsTupleArray
-                self.getNextShuttleTime()
+                self.findCurrentLocation()
+//                self.getNextShuttleTime()
             }
         }
     }
@@ -302,7 +274,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             
             // find the next shuttle time
             for scheduleTime in self.schedule {
-                if (foundNextTime == false && scheduleTime.1 > currentTimeSeconds) {
+                if (foundNextTime == false && Double(scheduleTime.1) > Double(currentTimeSeconds) + self.travelTime) {
                     nextTime = scheduleTime
                     foundNextTime = true
                 }
