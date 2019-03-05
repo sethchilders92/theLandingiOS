@@ -19,10 +19,13 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtn: UIButton!
+    // the map
+    @IBOutlet weak var mapView: MKMapView!
+    // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime: UILabel!
     
     // location manager
     var locationManager:CLLocationManager!
-
     // user location
     var userLocation:CLLocation!
     // distance to next stop
@@ -34,14 +37,10 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // the shuttle stop coordinates
     var shuttleCoordinates: [Double]!
     // the shuttle schedule
-    var schedule: [String]!
+    var schedule: [(String, Int)]!
+//    var schedule: [(Timestamp, String)]!
     // the database
     lazy var db = Firestore.firestore()
-    // the map
-    @IBOutlet weak var mapView: MKMapView!
-    
-    // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime: UILabel!
     
     //width of the screen -- will be set in btnClick functions
     var width: CGFloat = 0.0
@@ -61,9 +60,11 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         // get the next shuttle time
         displayTime.font = displayTime.font.withSize(25)
         displayTime.text = "Calculating... 🤓"
-        updateTime()
-        getFirebaseData()
-        findCurrentLocation()
+        // pass in a closure
+        getFirebaseData() { returnedTimes in
+            self.convertStringsToTimes(tempSchedule: returnedTimes)
+            self.findCurrentLocation()
+        }
     }
     
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
@@ -76,7 +77,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // Assign the member variable 'schedule' to the modified retreived data
     // Change the displayTime text in the UI
 
-    func getFirebaseData() {
+    func getFirebaseData(_ completion: @escaping ([String]) -> ()) {
         DispatchQueue.global().async {
             self.db.collection("locations").document("mc_landing").getDocument { (document, error) in
                 var myTimes: [String] = []
@@ -91,12 +92,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             }
                         }
                     }
-                    
-                    DispatchQueue.main.async {
-                        self.schedule = myTimes
-//                        print("myTimes1: \(myTimes[0])")
-//                        self.displayTime.text = self.schedule[0]
-                    }
+                    completion(myTimes)
                 }
             }
         }
@@ -182,11 +178,13 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                                 tempClosest = (shuttleStop.0, shuttleStop.1, distance[0])
                             }
                         }
-                        // set the member variable
-                        self.closestLocation = tempClosest
-                        print("Closest Location: \(String(describing: self.closestLocation))")
-                        // after finding the closest location, calculate walking time
-                        self.getWalkingTime()
+                        DispatchQueue.main.async {
+                            // set the member variable
+                            self.closestLocation = tempClosest
+                            print("Closest Location: \(String(describing: self.closestLocation))")
+                            // after finding the closest location, calculate walking time
+                            self.getWalkingTime()
+                        }
                     }
                 }
             }
@@ -216,17 +214,108 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             if ((response?.expectedTravelTime) != nil) {
                 self.travelTime = (response?.expectedTravelTime)! / 60.00
                 print("ETA: \(String(describing: self.travelTime))")
+//                self.convertStringsToTimes()
             } else {
                 print("Error calculating ETA!")
             }
         })
     }
     
+    // if using a date obj in firebase
+//    func convertStringsToTimes(tempSchedule: [Timestamp]) {
+//        DispatchQueue.global().async {
+//            // you can probably convert this to be a map function
+//            var tupleArray = [(Timestamp, String)]()
+//            for time in tempSchedule {
+//                let date = time.dateValue()
+//                let calendar = Calendar.current
+//                let hour = String(calendar.component(.hour, from: date))
+//                var minutes = String(calendar.component(.minute, from: date))
+//
+//                // determine the postfix
+//                let postfix = Int(hour)! >= 12 ? "pm" : "am"
+//
+//                // add the leading zero if the minutes are single digits
+//                if (minutes.count == 1) {
+//                    minutes = "0\(minutes)"
+//                }
+//                tupleArray.append((time, "\(Int(hour)! > 12 ? Int(hour)!-12 : Int(hour)!):\(minutes) \(postfix)"))
+//            }
+//            DispatchQueue.main.async {
+//                self.schedule = tupleArray
+//                self.getNextShuttleTime()
+//            }
+//        }
+//    }
+    
+    func convertStringsToTimes(tempSchedule: [String]) {
+        DispatchQueue.global().async {
+            var secondsTupleArray = [(String, Int)]()
+            for time in tempSchedule {
+                // get the first two and last two characters of the string
+                let hour = Int(time.prefix(2))
+                let minutes = Int(time.suffix(2))
+                let secondsSinceStartOfDay = hour! * 3600 + minutes! * 60
+                
+                // determine the postfix
+                let postfix = hour! >= 12 ? "pm" : "am"
+                
+                // add the leading zero if the minutes are single digits
+                var minuteString = String(minutes!)
+                if (minutes! < 10) {
+                    minuteString = "0\(minutes!)"
+                }
+                // make the time 12h base instead of 24h base & add the leading zero if necessary
+                var hourString = String(hour! > 12 ? hour!-12 : hour!)
+                if (hour! < 10) {
+                    hourString = "0\(hour!)"
+                }
+                
+                // create the new display time string with the postfix (am/pm)
+                let displayString = "\(hourString):\(minuteString) \(postfix)"
+                
+                // add the new display string and the calculated seconds to the temp schedule
+                secondsTupleArray.append((displayString, secondsSinceStartOfDay))
+            }
+            
+            DispatchQueue.main.async {
+                self.schedule = secondsTupleArray
+                self.getNextShuttleTime()
+            }
+        }
+    }
+    
     // Then if the walking time is greater than the amount of time before the next shuttle leaves,
     // then suggest the next time they would be able to make.
     // check the current time and then, according to user location, grab the next time at their location (or near their location)
     func getNextShuttleTime() {
-      
+        DispatchQueue.global().async {
+            let date = Date()
+            let calendar = Calendar.current
+            let dateComponents = calendar.dateComponents([.hour, .minute], from: date)
+            // calculate the number of seconds since the start of the day
+            let currentTimeSeconds = dateComponents.hour! * 3600 + dateComponents.minute! * 60
+            
+            // the default next time says the shuttle isn't running
+            var nextTime: (String, Int) = ("Stopped for the day", 0)
+            var foundNextTime = false;
+            
+            // find the next shuttle time
+            for scheduleTime in self.schedule {
+                if (foundNextTime == false && scheduleTime.1 > currentTimeSeconds) {
+                    nextTime = scheduleTime
+                    foundNextTime = true
+                }
+            }
+            DispatchQueue.main.async {
+                // change the display font size depending on what is to be displayed
+                self.displayTime.font = nextTime.1 == 0 ? self.displayTime.font.withSize(30): self.displayTime.font.withSize(45)
+                
+                // display the suggested shuttle time
+                self.displayTime.text = nextTime.0
+            }
+        }
     }
+    
 }
 
