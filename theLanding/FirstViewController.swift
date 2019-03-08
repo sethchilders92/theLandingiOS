@@ -13,13 +13,21 @@ import FirebaseFirestore
 import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
-    
+    //constraints
     @IBOutlet weak var locationConstraint: NSLayoutConstraint!
     @IBOutlet weak var mapConstraint: NSLayoutConstraint!
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
+    @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
+    
+    // views
     @IBOutlet weak var moreInfoBtn: UIButton!
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet var outerView: UIView!
+    @IBOutlet weak var innerView: UIView!
+    
     // the map
+    //@IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var mapView: MKMapView!
     // the display time for next suggested shuttle time
     @IBOutlet weak var displayTime: UILabel!
@@ -48,8 +56,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        moreInfoBtn.layer.cornerRadius = 4
         width = self.view.frame.size.width
+        
+        tableViewConstraint.constant = width
         
         // setup the firebase instance
         let settings = db.settings
@@ -67,8 +76,29 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     }
     
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
-        // transition to second view
-        performSegue(withIdentifier: "secondViewSeg", sender: self)
+        tableViewConstraint.constant = 0;
+        UIView.animate(withDuration: 0.5) {
+            self.view.layoutIfNeeded()
+        }
+        moreInfoBtn.isHidden = true
+        innerView?.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+        //outerView?.backgroundColor = UIColor.black.withAlphaComponent(0.4)
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if tableViewConstraint.constant == 0 {
+            let touch: UITouch? = touches.first
+            
+            if touch?.view != tableView {
+                tableViewConstraint.constant = width
+                UIView.animate(withDuration: 0.5) {
+                    self.view.layoutIfNeeded()
+                }
+                moreInfoBtn.isHidden = false
+                innerView?.backgroundColor = UIColor.black.withAlphaComponent(0)
+                //outerView?.backgroundColor = UIColor.black.withAlphaComponent(0)
+            }
+        }
     }
   
     // This is messy. Get the schedule and locations from Firebase
