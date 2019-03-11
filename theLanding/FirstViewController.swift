@@ -14,17 +14,17 @@ import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
     //constraints
-    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
     @IBOutlet weak var mapConstraint: NSLayoutConstraint!
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
     @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
+    
     
     // views
     @IBOutlet weak var moreInfoBtn: UIButton!
     @IBOutlet weak var tableView: UITableView!
     @IBOutlet var outerView: UIView!
-    @IBOutlet weak var innerView: UIView!
     
     // the map
     //@IBOutlet weak var mapView: MKMapView!
@@ -70,19 +70,22 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         displayTime.font = displayTime.font.withSize(35)
         displayTime.text = "Calculating... 🤓"
         // pass in a closure
-        getFirebaseData() { returnedTimes in
-            self.convertStringsToTimes(tempSchedule: returnedTimes)
-        }
+//        getFirebaseData(doc:"mc_landing") { returnedTimes in
+//            self.convertStringsToTimes(tempSchedule: returnedTimes)
+//        }
+        
+        getFirebaseData(doc: "all_times", { returnedTimes in
+            
+        })
     }
     
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
         tableViewConstraint.constant = 0;
         UIView.animate(withDuration: 0.5) {
             self.view.layoutIfNeeded()
+            self.moreInfoBtn.isHidden = true
+            self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(0.4)
         }
-        moreInfoBtn.isHidden = true
-        innerView?.backgroundColor = UIColor.black.withAlphaComponent(0.4)
-        //outerView?.backgroundColor = UIColor.black.withAlphaComponent(0.4)
     }
     
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -93,10 +96,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                 tableViewConstraint.constant = width
                 UIView.animate(withDuration: 0.5) {
                     self.view.layoutIfNeeded()
+                    self.moreInfoBtn.isHidden = false
+                    self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(1)
                 }
-                moreInfoBtn.isHidden = false
-                innerView?.backgroundColor = UIColor.black.withAlphaComponent(0)
-                //outerView?.backgroundColor = UIColor.black.withAlphaComponent(0)
             }
         }
     }
@@ -105,27 +107,30 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     // Then modify the retreived data to be in the format you need
     // Assign the member variable 'schedule' to the modified retreived data
     // Change the displayTime text in the UI
-
-    func getFirebaseData(_ completion: @escaping ([String]) -> ()) {
+    func getFirebaseData(doc:String, _ completion: @escaping ([String]) -> ()) {
         DispatchQueue.global().async {
-            self.db.collection("locations").document("mc_landing").getDocument { (document, error) in
+            self.db.collection("locations").document(doc).getDocument { (document, error) in
                 var myTimes: [String] = []
                 if let error = error {
                     print("Error getting documents: \(error)")
                 } else {
-                    if let document = document, document.exists {
-                        let locationTimes = document.data()
-                        for times in locationTimes! {
-                            for time in times.value as! [String] {
-                                myTimes.append(time)
-                            }
-                        }
-                    }
+                    print("----------------------------------------------------------------------")
+                    print("Document: \(document)")
+                    print("----------------------------------------------------------------------")
+//                    if let document = document, document.exists {
+//                        let locationTimes = document.data()
+//                        for times in locationTimes! {
+//                            for time in times.value as! [String] {
+//                                myTimes.append(time)
+//                            }
+//                        }
+//                    }
                     completion(myTimes)
                 }
             }
         }
     }
+    
 
     // Time updating and formatting. You may want to do this Asynchronously
     func updateTime() {
