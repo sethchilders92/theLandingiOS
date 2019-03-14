@@ -8,10 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		B032F71A7463C8BADF2B579A /* Pods_theLanding.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = FF03F96044BED89EE1B31424 /* Pods_theLanding.framework */; };
-		BF9EEA3D2232DD6C0046D6C7 /* info.png in Resources */ = {isa = PBXBuildFile; fileRef = BF9EEA3C2232DD6C0046D6C7 /* info.png */; };
 		E742E3832224650500FC0250 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = E742E3822224650500FC0250 /* GoogleService-Info.plist */; };
 		E7772A662208B7A100564F7F /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7772A652208B7A100564F7F /* AppDelegate.swift */; };
 		E7772A682208B7A100564F7F /* FirstViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7772A672208B7A100564F7F /* FirstViewController.swift */; };
+		E7772A6A2208B7A100564F7F /* SecondViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7772A692208B7A100564F7F /* SecondViewController.swift */; };
 		E7772A6D2208B7A100564F7F /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E7772A6B2208B7A100564F7F /* Main.storyboard */; };
 		E7772A6F2208B7A300564F7F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E7772A6E2208B7A300564F7F /* Assets.xcassets */; };
 		E7772A722208B7A300564F7F /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E7772A702208B7A300564F7F /* LaunchScreen.storyboard */; };
@@ -19,12 +19,12 @@
 
 /* Begin PBXFileReference section */
 		0109B1238E881D44174F1D4C /* Pods-theLanding.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-theLanding.debug.xcconfig"; path = "Pods/Target Support Files/Pods-theLanding/Pods-theLanding.debug.xcconfig"; sourceTree = "<group>"; };
-		BF9EEA3C2232DD6C0046D6C7 /* info.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = info.png; path = Assets.xcassets/info.png; sourceTree = "<group>"; };
 		CFAFE23A54727D2AD1215ED7 /* Pods-theLanding.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-theLanding.release.xcconfig"; path = "Pods/Target Support Files/Pods-theLanding/Pods-theLanding.release.xcconfig"; sourceTree = "<group>"; };
 		E742E3822224650500FC0250 /* GoogleService-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "../../../../Downloads/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		E7772A622208B7A100564F7F /* theLanding.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = theLanding.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E7772A652208B7A100564F7F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		E7772A672208B7A100564F7F /* FirstViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstViewController.swift; sourceTree = "<group>"; };
+		E7772A692208B7A100564F7F /* SecondViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecondViewController.swift; sourceTree = "<group>"; };
 		E7772A6C2208B7A100564F7F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		E7772A6E2208B7A300564F7F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		E7772A712208B7A300564F7F /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -85,8 +85,8 @@
 				E742E3822224650500FC0250 /* GoogleService-Info.plist */,
 				E7772A652208B7A100564F7F /* AppDelegate.swift */,
 				E7772A672208B7A100564F7F /* FirstViewController.swift */,
+				E7772A692208B7A100564F7F /* SecondViewController.swift */,
 				E7772A6B2208B7A100564F7F /* Main.storyboard */,
-				BF9EEA3C2232DD6C0046D6C7 /* info.png */,
 				E7772A6E2208B7A300564F7F /* Assets.xcassets */,
 				E7772A702208B7A300564F7F /* LaunchScreen.storyboard */,
 				E7772A732208B7A300564F7F /* Info.plist */,
@@ -156,7 +156,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				E7772A722208B7A300564F7F /* LaunchScreen.storyboard in Resources */,
-				BF9EEA3D2232DD6C0046D6C7 /* info.png in Resources */,
 				E742E3832224650500FC0250 /* GoogleService-Info.plist in Resources */,
 				E7772A6F2208B7A300564F7F /* Assets.xcassets in Resources */,
 				E7772A6D2208B7A100564F7F /* Main.storyboard in Resources */,
@@ -251,6 +250,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E7772A6A2208B7A100564F7F /* SecondViewController.swift in Sources */,
 				E7772A662208B7A100564F7F /* AppDelegate.swift in Sources */,
 				E7772A682208B7A100564F7F /* FirstViewController.swift in Sources */,
 			);
