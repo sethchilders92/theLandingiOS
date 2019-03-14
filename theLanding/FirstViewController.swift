@@ -19,31 +19,24 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtn: UIButton!
-    // the map
-    @IBOutlet weak var mapView: MKMapView!
-    // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime: UILabel!
+    @IBOutlet weak var mapView: MKMapView! // the map
+    @IBOutlet weak var displayTime1: UILabel! // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime2: UILabel! // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime3: UILabel! // the display time for next suggested shuttle time
     
-    // location manager
-    var locationManager:CLLocationManager!
-    // user location
-    var userLocation:CLLocation!
-    // distance to next stop
-    var metersToShuttleStop: [CLLocationDistance]!
-    // closest stop to the users current location
-    var closestLocation: (name: String, location: CLLocation, distance: Double)!
-    // walking time in minutes to closest shuttle stop
-    var travelTime: Double!
-    // the shuttle stop coordinates
-    var shuttleCoordinates: [Double]!
-    // the shuttle schedule
-    var schedule: [(String, Int)]!
+    
+    var locationManager:CLLocationManager! // location manager
+    var userLocation:CLLocation! // user location
+    var locations: [(name: String, location: CLLocation)]! // an array of all the locations
+    var closestLocation: (name: String, location: CLLocation, distance: Double)! // closest stop to user's current location
+    var metersToShuttleStop: [CLLocationDistance]! // distance to next stop
+    var travelTime: Double! // walking time in minutes to closest shuttle stop
+    var shuttleCoordinates: [Double]! // the shuttle stop coordinates
+    var fullSchedule: [Dictionary<String, Any>]! // the full schedule from firebase
+    var schedule: [(String, Int)]! // the shuttle schedule
 //    var schedule: [(Timestamp, String)]!
-    // the database
-    lazy var db = Firestore.firestore()
-    
-    //width of the screen -- will be set in btnClick functions
-    var width: CGFloat = 0.0
+    lazy var db = Firestore.firestore() // the database
+    var width: CGFloat = 0.0 //width of the screen -- will be set in btnClick functions
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -57,12 +50,11 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
 
-        // get the next shuttle time
-        displayTime.font = displayTime.font.withSize(35)
-        displayTime.text = "Calculating... 🤓"
-        // pass in a closure
+        // get the shuttle times
         getFirebaseData() { returnedTimes in
-            self.convertStringsToTimes(tempSchedule: returnedTimes)
+            // sort the schedule by time from earliest to latest times in the day
+            self.fullSchedule = returnedTimes.sorted { $1["time"] as! String > $0["time"] as! String }
+            self.findCurrentLocation()
         }
     }
     
@@ -71,23 +63,20 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         performSegue(withIdentifier: "secondViewSeg", sender: self)
     }
   
-    // This is messy. Get the schedule and locations from Firebase
-    // Then modify the retreived data to be in the format you need
-    // Assign the member variable 'schedule' to the modified retreived data
-    // Change the displayTime text in the UI
-
-    func getFirebaseData(_ completion: @escaping ([String]) -> ()) {
+    func getFirebaseData(_ completion: @escaping ([Dictionary<String, Any>]) -> ()) {
         DispatchQueue.global().async {
-            self.db.collection("locations").document("mc_landing").getDocument { (document, error) in
-                var myTimes: [String] = []
+            self.db.collection("locations").document("all_times").getDocument { (document, error) in
+                var myTimes: [Dictionary<String, Any>] = []
                 if let error = error {
                     print("Error getting documents: \(error)")
                 } else {
                     if let document = document, document.exists {
-                        let locationTimes = document.data()
-                        for times in locationTimes! {
-                            for time in times.value as! [String] {
-                                myTimes.append(time)
+                        if let locationTimes = document.data() {
+                            if let times = locationTimes["all_times"] {
+                                let arrayTimes:[Dictionary<String,Any>] = times as! [Dictionary<String, Any>]
+                                for time in arrayTimes {
+                                    myTimes.append(time)
+                                }
                             }
                         }
                     }
@@ -95,20 +84,6 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                 }
             }
         }
-    }
-
-    // Time updating and formatting. You may want to do this Asynchronously
-    func updateTime() {
-        let date = Date()
-        let calendar = Calendar.current
-        let currentHour = calendar.component(.hour, from: date)
-        let currentMinutes = calendar.component(.minute, from: date)
-        var postfix = "am"
-        if (currentHour > 12) {
-            postfix = "pm"
-        }
-        displayTime.font = displayTime.font.withSize(45)
-        displayTime.text = "\(currentHour > 12 ? currentHour-12 : currentHour):\(currentMinutes) \(postfix)"
     }
 
     // Bro Barney - Find the user's current location
@@ -131,13 +106,45 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         
         // setup the map with the center being on the user's location
         let center = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude, longitude: userLocation.coordinate.longitude)
-        let region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01))
+        let region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: 0.005, longitudeDelta: 0.005))
         mapView.mapType = .satellite
         mapView.setRegion(region, animated: true)
         mapView.showsUserLocation = true
         
         // after getting the user's location, find the closest shuttle stop to them
-        getClosestLocation()
+        checkRegion()
+        getLocations()
+    }
+    
+    func checkRegion() {
+        // Your coordinates go here (lat, lon)
+        let geofenceRegionCenter = CLLocationCoordinate2D(
+            latitude: userLocation.coordinate.latitude,
+            longitude: userLocation.coordinate.longitude
+        )
+        
+        /* Create a region centered on desired location,
+         choose a radius for the region (in meters)
+         choose a unique identifier for that region */
+        let geofenceRegion = CLCircularRegion(
+            center: geofenceRegionCenter,
+            radius: 500,
+            identifier: "UniqueIdentifier"
+        )
+        
+        print("GEOFENCE")
+        geofenceRegion.notifyOnEntry = true
+        geofenceRegion.notifyOnExit = true
+        
+        self.locationManager.startMonitoring(for: geofenceRegion)
+    }
+    
+    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
+        if region is CLCircularRegion {
+            print("Welcome to Playa Grande! If the waves are good, you can try surfing!")
+        }
+        print("WORKKKKK")
+        //Good place to schedule a local notification
     }
     
     // Bro Barney - If getting the user's location is NOT unsuccessful
@@ -146,7 +153,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     }
 
     // loop throught the locations and find the closest one to the user
-    func getClosestLocation() {
+    func getLocations() {
         DispatchQueue.global().async {
             // get the 'coordinates' document from firebase with all the locations and their coordinates
             self.db.collection("locations").document("coordinates").getDocument { (document, error) in
@@ -155,7 +162,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                 } else {
                     if let document = document, document.exists {
                         // a variable to store the formatted locations in
-                        var locations = [(name: String, coordinates: CLLocation)]()
+                        var locations = [(name: String, location: CLLocation)]()
                         // get the data from the document
                         let locationsData = document.data()
                         // for each item in the document, format it and append it to the 'locations' variable
@@ -164,7 +171,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             let lat = coord.latitude
                             let lon = coord.longitude
                             locations.append((name: location.key,
-                                              coordinates: CLLocation.init(latitude: lat, longitude: lon)))
+                                              location: CLLocation.init(latitude: lat, longitude: lon)))
                         }
                         // make a random location that is far, far away
                         var tempClosest = ("No where", CLLocation.init(latitude: 24.8560, longitude: -12.7739), 1000000000.00)
@@ -178,11 +185,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             }
                         }
                         DispatchQueue.main.async {
-                            // set the member variable
+                            // set the member variables
+                            self.locations = locations
                             self.closestLocation = tempClosest
-                            print("Closest Location: \(String(describing: self.closestLocation))")
+//                            print("Closest Location: \(String(describing: self.closestLocation))")
                             // after finding the closest location, calculate walking time
-                            self.getWalkingTime()
+                            self.convertStringsToTimes()
                         }
                     }
                 }
@@ -194,65 +202,64 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     /* These next to methods are dependent on each other. Code them carefully. */
     
     // Based on the users location, calculate the walking time to the closest shuttle stop.
-    func getWalkingTime() {
-        // set the source and destination coordinates
-        let sourceCoordinates = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude,
-                                                       longitude: userLocation.coordinate.longitude)
-        let destinationCoordinates = CLLocationCoordinate2D(latitude: closestLocation.1.coordinate.latitude,
-                                                            longitude: closestLocation.1.coordinate.longitude)
-        
-        // create a request for Apple Servers to calculate the ETA to walk to the closest shuttle stop
-        let request = MKDirections.Request()
-        request.source = MKMapItem(placemark: MKPlacemark(coordinate: sourceCoordinates, addressDictionary: nil))
-        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destinationCoordinates, addressDictionary: nil))
-        request.requestsAlternateRoutes = true
-        request.transportType = .walking
-        
-        // make the request and calculate the ETA
-        let directions = MKDirections(request: request)
-        directions.calculateETA(completionHandler: { response, error in
-            // if the request was successful and there is an arrival time
-            if ((response?.expectedTravelTime) != nil) {
-                self.travelTime = (response?.expectedTravelTime)!
-                print("ETA: \(String(describing: self.travelTime))")
-                self.getNextShuttleTime()
-            } else {
-                print("Error calculating ETA!")
-            }
-        })
-    }
+//    func getWalkingTime() {
+//        // set the source and destination coordinates
+//        let sourceCoordinates = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude,
+//                                                       longitude: userLocation.coordinate.longitude)
+//        let destinationCoordinates = CLLocationCoordinate2D(latitude: closestLocation.1.coordinate.latitude,
+//                                                            longitude: closestLocation.1.coordinate.longitude)
+//
+//        // create a request for Apple Servers to calculate the ETA to walk to the closest shuttle stop
+//        let request = MKDirections.Request()
+//        request.source = MKMapItem(placemark: MKPlacemark(coordinate: sourceCoordinates, addressDictionary: nil))
+//        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destinationCoordinates, addressDictionary: nil))
+//        request.requestsAlternateRoutes = true
+//        request.transportType = .walking
+//
+//        // make the request and calculate the ETA
+//        let directions = MKDirections(request: request)
+//        directions.calculateETA(completionHandler: { response, error in
+//            // if the request was successful and there is an arrival time
+//            if ((response?.expectedTravelTime) != nil) {
+//                self.travelTime = (response?.expectedTravelTime)!
+//                print("ETA: \(String(describing: self.travelTime))")
+//                self.convertStringsToTimes()
+//            } else {
+//                print("Error calculating ETA!")
+//            }
+//        })
+//    }
     
-    func convertStringsToTimes(tempSchedule: [String]) {
+    func convertStringsToTimes() {
         DispatchQueue.global().async {
             var secondsTupleArray = [(String, Int)]()
-            for time in tempSchedule {
+            for scheduleItem in self.fullSchedule {
+                let time = scheduleItem["time"] as! String
                 // get the first two and last two characters of the string
                 let hour = Int(time.prefix(2))
                 let minutes = Int(time.suffix(2))
                 let secondsSinceStartOfDay = hour! * 3600 + minutes! * 60
-                
+
                 // determine the postfix
                 let postfix = hour! >= 12 ? "pm" : "am"
-                
+
                 // add the leading zero if the minutes are single digits
                 let minuteString = minutes! < 10 ? String("0\(minutes!)") : String(minutes!)
-                
+
                 // make the time 12h base instead of 24h base & add the leading zero if necessary
                 var hourString = String(hour! > 12 ? hour!-12 : hour!)
-                // if the hour is single a single diget, add a leading zero
                 hourString = Int(hourString)! < 10 ? "0\(hourString)" : hourString
-                
+
                 // create the new display time string with the postfix (am/pm)
                 let displayString = "\(hourString):\(minuteString) \(postfix)"
-                
+
                 // add the new display string and the calculated seconds to the temp schedule
                 secondsTupleArray.append((displayString, secondsSinceStartOfDay))
             }
-            
+
             DispatchQueue.main.async {
                 self.schedule = secondsTupleArray
-                self.findCurrentLocation()
-//                self.getNextShuttleTime()
+                self.getNextShuttleTime()
             }
         }
     }
@@ -269,25 +276,41 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             let currentTimeSeconds = dateComponents.hour! * 3600 + dateComponents.minute! * 60
             
             // the default next time says the shuttle isn't running
-            var nextTime: (String, Int) = ("Stopped for the day", 0)
-            var foundNextTime = false;
+            var nextTimes: [(String, Int)] = []
+            var foundNextTime = 0;
             
             // find the next shuttle time
             for scheduleTime in self.schedule {
-                if (foundNextTime == false && Double(scheduleTime.1) > Double(currentTimeSeconds) + self.travelTime) {
-                    nextTime = scheduleTime
-                    foundNextTime = true
+                if (foundNextTime < 3 && Double(scheduleTime.1) > Double(currentTimeSeconds)) {//} + self.travelTime) {
+                    nextTimes.append(scheduleTime)
+                    foundNextTime += 1
                 }
             }
             DispatchQueue.main.async {
-                // change the display font size depending on what is to be displayed
-                self.displayTime.font = nextTime.1 == 0 ? self.displayTime.font.withSize(30): self.displayTime.font.withSize(45)
-                
-                // display the suggested shuttle time
-                self.displayTime.text = nextTime.0
+                self.displayTimes(nextTimes: nextTimes)
             }
         }
     }
     
+    func displayTimes(nextTimes: [(String, Int)]) {
+        // change the display font size depending on what is to be displayed
+        self.displayTime1.font = nextTimes.count > 0 ? self.displayTime1.font.withSize(45): self.displayTime1.font.withSize(25)
+        self.displayTime2.font = nextTimes.count > 1 ? self.displayTime2.font.withSize(45): self.displayTime2.font.withSize(25)
+        self.displayTime3.font = nextTimes.count > 2 ? self.displayTime3.font.withSize(45): self.displayTime3.font.withSize(25)
+        
+        // display the suggested shuttle time
+        let shuttleStopped = "Stopped for the day"
+        self.displayTime1.text = nextTimes.count > 0 ? nextTimes[0].0 : shuttleStopped
+        self.displayTime2.text = nextTimes.count > 1 ? nextTimes[1].0 : ""
+        self.displayTime3.text = nextTimes.count > 2 ? nextTimes[2].0 : ""
+    }
 }
+
+// get current location
+// get closest location
+// determine if that location is on campus
+
+// get times
+// sort times
+// get three relevant times
 
