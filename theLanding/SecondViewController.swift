@@ -10,21 +10,11 @@ import UIKit
 
 class SecondViewController: UIViewController {
     
-    @IBOutlet weak var backBtn: UIButton!
-    @IBOutlet weak var backBtnConstraint: NSLayoutConstraint!
-    @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
-    
     //width of the screen -- will be set in btnClick functions
     var width: CGFloat = 0.0
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        backBtn.layer.cornerRadius = 4
     }
-
-    @IBAction func backBtnClick(_ sender: UIButton) {
-        dismiss(animated: true, completion: nil)
-    }
-    
 }
 

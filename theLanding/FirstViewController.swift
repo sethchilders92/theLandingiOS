@@ -13,27 +13,39 @@ import FirebaseFirestore
 import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
-    
-    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
+    //constraints
     @IBOutlet weak var mapConstraint: NSLayoutConstraint!
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
+    @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
+    
+    
+    // views
     @IBOutlet weak var moreInfoBtn: UIButton!
-    @IBOutlet weak var mapView: MKMapView! // the map
-    @IBOutlet weak var displayTime1: UILabel! // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime2: UILabel! // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime3: UILabel! // the display time for next suggested shuttle time
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet var outerView: UIView!
     
+    // the map
+    //@IBOutlet weak var mapView: MKMapView!
+    @IBOutlet weak var mapView: MKMapView!
+    // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime: UILabel!
     
-    var locationManager:CLLocationManager! // location manager
-    var userLocation:CLLocation! // user location
-    var locations: [(name: String, location: CLLocation)]! // an array of all the locations
-    var closestLocation: (name: String, location: CLLocation, distance: Double)! // closest stop to user's current location
-    var metersToShuttleStop: [CLLocationDistance]! // distance to next stop
-    var travelTime: Double! // walking time in minutes to closest shuttle stop
-    var shuttleCoordinates: [Double]! // the shuttle stop coordinates
-    var fullSchedule: [Dictionary<String, Any>]! // the full schedule from firebase
-    var schedule: [(String, Int)]! // the shuttle schedule
+    // location manager
+    var locationManager:CLLocationManager!
+    // user location
+    var userLocation:CLLocation!
+    // distance to next stop
+    var metersToShuttleStop: [CLLocationDistance]!
+    // closest stop to the users current location
+    var closestLocation: (name: String, location: CLLocation, distance: Double)!
+    // walking time in minutes to closest shuttle stop
+    var travelTime: Double!
+    // the shuttle stop coordinates
+    var shuttleCoordinates: [Double]!
+    // the shuttle schedule
+    var schedule: [(String, Int)]!
 //    var schedule: [(Timestamp, String)]!
     lazy var db = Firestore.firestore() // the database
     var width: CGFloat = 0.0 //width of the screen -- will be set in btnClick functions
@@ -41,8 +53,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        moreInfoBtn.layer.cornerRadius = 4
         width = self.view.frame.size.width
+        
+        tableViewConstraint.constant = width
         
         // setup the firebase instance
         let settings = db.settings
@@ -50,41 +63,71 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
 
-        // get the shuttle times
-        getFirebaseData() { returnedTimes in
-            // sort the schedule by time from earliest to latest times in the day
-            self.fullSchedule = returnedTimes.sorted { $1["time"] as! String > $0["time"] as! String }
-            self.findCurrentLocation()
-        }
+        // get the next shuttle time
+        displayTime.font = displayTime.font.withSize(35)
+        displayTime.text = "Calculating... 🤓"
+        // pass in a closure
+//        getFirebaseData(doc:"mc_landing") { returnedTimes in
+//            self.convertStringsToTimes(tempSchedule: returnedTimes)
+//        }
+        
+        getFirebaseData(doc: "all_times", { returnedTimes in
+            
+        })
     }
     
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
-        // transition to second view
-        performSegue(withIdentifier: "secondViewSeg", sender: self)
+        tableViewConstraint.constant = 0;
+        UIView.animate(withDuration: 0.5) {
+            self.view.layoutIfNeeded()
+            self.moreInfoBtn.isHidden = true
+            self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(0.4)
+        }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if tableViewConstraint.constant == 0 {
+            let touch: UITouch? = touches.first
+            
+            if touch?.view != tableView {
+                tableViewConstraint.constant = width
+                UIView.animate(withDuration: 0.5) {
+                    self.view.layoutIfNeeded()
+                    self.moreInfoBtn.isHidden = false
+                    self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(1)
+                }
+            }
+        }
     }
   
-    func getFirebaseData(_ completion: @escaping ([Dictionary<String, Any>]) -> ()) {
+    // This is messy. Get the schedule and locations from Firebase
+    // Then modify the retreived data to be in the format you need
+    // Assign the member variable 'schedule' to the modified retreived data
+    // Change the displayTime text in the UI
+    func getFirebaseData(doc:String, _ completion: @escaping ([String]) -> ()) {
         DispatchQueue.global().async {
-            self.db.collection("locations").document("all_times").getDocument { (document, error) in
-                var myTimes: [Dictionary<String, Any>] = []
+            self.db.collection("locations").document(doc).getDocument { (document, error) in
+                var myTimes: [String] = []
                 if let error = error {
                     print("Error getting documents: \(error)")
                 } else {
-                    if let document = document, document.exists {
-                        if let locationTimes = document.data() {
-                            if let times = locationTimes["all_times"] {
-                                let arrayTimes:[Dictionary<String,Any>] = times as! [Dictionary<String, Any>]
-                                for time in arrayTimes {
-                                    myTimes.append(time)
-                                }
-                            }
-                        }
-                    }
+                    print("----------------------------------------------------------------------")
+                    print("Document: \(document)")
+                    print("----------------------------------------------------------------------")
+//                    if let document = document, document.exists {
+//                        let locationTimes = document.data()
+//                        for times in locationTimes! {
+//                            for time in times.value as! [String] {
+//                                myTimes.append(time)
+//                            }
+//                        }
+//                    }
                     completion(myTimes)
                 }
             }
         }
     }
+    
 
     // Bro Barney - Find the user's current location
     func findCurrentLocation() {
