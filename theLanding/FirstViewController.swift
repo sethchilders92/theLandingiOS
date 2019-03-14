@@ -13,13 +13,21 @@ import FirebaseFirestore
 import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
-    
-    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
+    //constraints
     @IBOutlet weak var mapConstraint: NSLayoutConstraint!
     @IBOutlet weak var timeConstraint: NSLayoutConstraint!
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
     @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
+    @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
+    
+    
+    // views
     @IBOutlet weak var moreInfoBtn: UIButton!
+    @IBOutlet weak var tableView: UITableView!
+    @IBOutlet var outerView: UIView!
+    
     // the map
+    //@IBOutlet weak var mapView: MKMapView!
     @IBOutlet weak var mapView: MKMapView!
     // the display time for next suggested shuttle time
     @IBOutlet weak var displayTime: UILabel!
@@ -48,8 +56,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        moreInfoBtn.layer.cornerRadius = 4
         width = self.view.frame.size.width
+        
+        tableViewConstraint.constant = width
         
         // setup the firebase instance
         let settings = db.settings
@@ -61,41 +70,67 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         displayTime.font = displayTime.font.withSize(35)
         displayTime.text = "Calculating... 🤓"
         // pass in a closure
-        getFirebaseData() { returnedTimes in
-            self.convertStringsToTimes(tempSchedule: returnedTimes)
-        }
+//        getFirebaseData(doc:"mc_landing") { returnedTimes in
+//            self.convertStringsToTimes(tempSchedule: returnedTimes)
+//        }
+        
+        getFirebaseData(doc: "all_times", { returnedTimes in
+            
+        })
     }
     
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
-        // transition to second view
-        performSegue(withIdentifier: "secondViewSeg", sender: self)
+        tableViewConstraint.constant = 0;
+        UIView.animate(withDuration: 0.5) {
+            self.view.layoutIfNeeded()
+            self.moreInfoBtn.isHidden = true
+            self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(0.4)
+        }
+    }
+    
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if tableViewConstraint.constant == 0 {
+            let touch: UITouch? = touches.first
+            
+            if touch?.view != tableView {
+                tableViewConstraint.constant = width
+                UIView.animate(withDuration: 0.5) {
+                    self.view.layoutIfNeeded()
+                    self.moreInfoBtn.isHidden = false
+                    self.outerView?.backgroundColor = UIColor.white.withAlphaComponent(1)
+                }
+            }
+        }
     }
   
     // This is messy. Get the schedule and locations from Firebase
     // Then modify the retreived data to be in the format you need
     // Assign the member variable 'schedule' to the modified retreived data
     // Change the displayTime text in the UI
-
-    func getFirebaseData(_ completion: @escaping ([String]) -> ()) {
+    func getFirebaseData(doc:String, _ completion: @escaping ([String]) -> ()) {
         DispatchQueue.global().async {
-            self.db.collection("locations").document("mc_landing").getDocument { (document, error) in
+            self.db.collection("locations").document(doc).getDocument { (document, error) in
                 var myTimes: [String] = []
                 if let error = error {
                     print("Error getting documents: \(error)")
                 } else {
-                    if let document = document, document.exists {
-                        let locationTimes = document.data()
-                        for times in locationTimes! {
-                            for time in times.value as! [String] {
-                                myTimes.append(time)
-                            }
-                        }
-                    }
+                    print("----------------------------------------------------------------------")
+                    print("Document: \(document)")
+                    print("----------------------------------------------------------------------")
+//                    if let document = document, document.exists {
+//                        let locationTimes = document.data()
+//                        for times in locationTimes! {
+//                            for time in times.value as! [String] {
+//                                myTimes.append(time)
+//                            }
+//                        }
+//                    }
                     completion(myTimes)
                 }
             }
         }
     }
+    
 
     // Time updating and formatting. You may want to do this Asynchronously
     func updateTime() {
