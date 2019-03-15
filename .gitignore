@@ -34,8 +34,10 @@ theLanding/GoogleService-Info.plist
 #########################
 
 ##### Ignore the project zip file
-.xcodeproj
-.pbxproj
+*.xcodeproj
+*.pbxproj
+*.xcworkspacedata
+*IDEWorkspaceChecks.plist
 
 #####
 # OS X temporary files that should never be committed
