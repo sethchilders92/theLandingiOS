@@ -34,8 +34,8 @@ theLanding/GoogleService-Info.plist
 #########################
 
 ##### Ignore the project zip file
-*.xcodeproj
-*.pbxproj
+# .xcodeproj
+# *.pbxproj
 *.xcworkspacedata
 *IDEWorkspaceChecks.plist
 
