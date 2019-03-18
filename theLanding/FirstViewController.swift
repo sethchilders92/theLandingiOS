@@ -14,16 +14,23 @@ import CoreLocation
 
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
     
-    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
-    @IBOutlet weak var mapConstraint: NSLayoutConstraint!
-    @IBOutlet weak var timeConstraint: NSLayoutConstraint!
-    @IBOutlet weak var moreInfoBtnConstraint: NSLayoutConstraint!
-    @IBOutlet weak var moreInfoBtn: UIButton!
-    @IBOutlet weak var mapView: MKMapView! // the map
-    @IBOutlet weak var displayTime1: UILabel! // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime2: UILabel! // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime3: UILabel! // the display time for next suggested shuttle time
+    //components
+    @IBOutlet weak var mapView: MKMapView!     // the map
+    @IBOutlet weak var displayTime1: UILabel!  // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime2: UILabel!  // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime3: UILabel!  // the display time for next suggested shuttle time
+    @IBOutlet weak var moreInfoBtn: UIButton!  // the button for the user to get more times
+    @IBOutlet var safeAreaView: UIView!        // the safe area component
+    @IBOutlet weak var tableView: UITableView! // the component that holds all of the times
     
+    //component constraints to allow for "page transitions"
+    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
+    @IBOutlet weak var displayTime1Constraint: NSLayoutConstraint!
+    @IBOutlet weak var displayTime2Constraint: NSLayoutConstraint!
+    @IBOutlet weak var displayTime3Constraint: NSLayoutConstraint!
+    @IBOutlet weak var mapConstraint: NSLayoutConstraint!
+    @IBOutlet var moreInfoBtnConstraint: UIView!
+    @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
     
     var locationManager:CLLocationManager! // location manager
     var userLocation:CLLocation! // user location
@@ -38,11 +45,18 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     lazy var db = Firestore.firestore() // the database
     var width: CGFloat = 0.0 //width of the screen -- will be set in btnClick functions
     
+    /********************************************
+    * viewDidLoad
+    *
+    * This serves as a constructor and initializes
+    * the app at start.
+    ********************************************/
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        moreInfoBtn.layer.cornerRadius = 4
+        //set the components and hides certain features
         width = self.view.frame.size.width
+        tableViewConstraint.constant = width
         
         // setup the firebase instance
         let settings = db.settings
@@ -57,12 +71,14 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             self.findCurrentLocation()
         }
     }
-    
-    @IBAction func moreInfoBtnClick(_ sender: UIButton) {
-        // transition to second view
-        performSegue(withIdentifier: "secondViewSeg", sender: self)
-    }
   
+    /********************************************
+     * getFirebaseData
+     *
+     * This makes an asynchronous call to Firebase
+     * and gets all of the scheduled times as
+     * needed.
+     ********************************************/
     func getFirebaseData(_ completion: @escaping ([Dictionary<String, Any>]) -> ()) {
         DispatchQueue.global().async {
             self.db.collection("locations").document("all_times").getDocument { (document, error) in
@@ -85,8 +101,71 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             }
         }
     }
-
-    // Bro Barney - Find the user's current location
+    
+    /********************************************
+     * moreInfoBtnClick
+     *
+     * This function is called when the button
+     * is clicked and it animates the tableView
+     * moving over.
+     ********************************************/
+    @IBAction func moreInfoBtnClick(_ sender: UIButton) {
+        tableViewConstraint.constant = 0
+        UIView.animate(withDuration: 0.5) {
+            self.view.layoutIfNeeded()
+            self.moreInfoBtn.alpha = 0
+            self.safeAreaView?.backgroundColor = UIColor.white.withAlphaComponent(0.4)
+        }
+    }
+    
+    /********************************************
+     * touchesBegan
+     *
+     * This function overrides the native function
+     * and defines what happens to the table view
+     * when an user clicks on the view outside of
+     * tableView.
+     ********************************************/
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        if tableViewConstraint.constant == 0 {
+            let touch: UITouch? = touches.first
+            
+            if touch?.view != tableView {
+                tableViewConstraint.constant = width
+                UIView.animate(withDuration: 0.5) {
+                    self.view.layoutIfNeeded()
+                    self.moreInfoBtn.alpha = 1
+                    self.safeAreaView?.backgroundColor = UIColor.white.withAlphaComponent(1)
+                }
+            }
+        }
+    }
+    
+    /********************************************
+     * swipeAway
+     *
+     * This function handles the user "swiping"
+     * away the table view.
+     ********************************************/
+    @IBAction func swipeAway(_ sender: UISwipeGestureRecognizer) {
+        if tableViewConstraint.constant == 0 &&
+            sender.state == .ended {
+            tableViewConstraint.constant = width
+            UIView.animate(withDuration: 0.5) {
+                self.view.layoutIfNeeded()
+                self.moreInfoBtn.alpha = 1
+                self.safeAreaView?.backgroundColor = UIColor.white.withAlphaComponent(1)
+            }
+        }
+    }
+    
+    /********************************************
+     * findCurrentLocation
+     *
+     * This gets the current location of the user
+     * Much thanks to Br. Barney for his help with
+     * this code.
+     ********************************************/
     func findCurrentLocation() {
         locationManager = CLLocationManager()
         locationManager.delegate = self
@@ -98,7 +177,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         }
     }
     
-    // Bro Barney - If getting the user's location is successful
+    /********************************************
+     * locationManager
+     *
+     * This function determines if the user's
+     * location is successful.
+     ********************************************/
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         // set the member variable to the most recent location
         userLocation = locations[0] as CLLocation
@@ -116,6 +200,14 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         getLocations()
     }
     
+    /********************************************
+     * checkRegion
+     *
+     * This function calculates the region of the
+     * user.
+     *
+     * STILL WIP -- geofencing
+     ********************************************/
     func checkRegion() {
         // Your coordinates go here (lat, lon)
         let geofenceRegionCenter = CLLocationCoordinate2D(
@@ -139,6 +231,11 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         self.locationManager.startMonitoring(for: geofenceRegion)
     }
     
+    /********************************************
+     * locationManager
+     *
+     * STILL WIP - Geofencing
+     ********************************************/
     func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
         if region is CLCircularRegion {
             print("Welcome to Playa Grande! If the waves are good, you can try surfing!")
@@ -147,12 +244,21 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         //Good place to schedule a local notification
     }
     
-    // Bro Barney - If getting the user's location is NOT unsuccessful
+    /********************************************
+     * locationManager
+     *
+     * This handles the situation when getting the
+     * user's location was not successful.
+     ********************************************/
     private func locationManger(_ manager: CLLocationManager, didFailWithError error: Error) {
         print("Error \(error)")
     }
 
-    // loop throught the locations and find the closest one to the user
+    /********************************************
+     * getLocations
+     *
+     * This determines the times/location.
+     ********************************************/
     func getLocations() {
         DispatchQueue.global().async {
             // get the 'coordinates' document from firebase with all the locations and their coordinates
