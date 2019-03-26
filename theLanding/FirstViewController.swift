@@ -41,7 +41,6 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     var shuttleCoordinates: [Double]! // the shuttle stop coordinates
     var fullSchedule: [Dictionary<String, Any>]! // the full schedule from firebase
     var schedule: [(String, Int)]! // the shuttle schedule
-//    var schedule: [(Timestamp, String)]!
     lazy var db = Firestore.firestore() // the database
     var width: CGFloat = 0.0 //width of the screen -- will be set in btnClick functions
     
@@ -63,15 +62,54 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
+        
+        // get the weekday's symbolic letter to help filter times down as seen below
+        let weekday = getWeekday()
 
         // get the shuttle times
         getFirebaseData() { returnedTimes in
             // sort the schedule by time from earliest to latest times in the day
             self.fullSchedule = returnedTimes.sorted { $1["time"] as! String > $0["time"] as! String }
+            // filter out the times that are for days other than the current day
+            self.fullSchedule = self.fullSchedule.filter {
+                (scheduleItem: Dictionary<String, Any>) in
+                let day = scheduleItem["days"] as! String
+                return day.contains(weekday)
+            }
             self.findCurrentLocation()
         }
     }
   
+    func getWeekday() -> String {
+        let date = Date()
+        let dateFormatter = DateFormatter()
+        
+        // get the day number
+        dateFormatter.dateFormat = "e"
+        let currentDateString: String = dateFormatter.string(from: date)
+        // write switch statement to assign/return day string (eg. r, t, s, m)
+        var today = ""
+        switch currentDateString {
+        case "1":
+            today = "m"
+        case "2":
+            today = "t"
+        case "3":
+            today = "w"
+        case "4":
+            today = "h"
+        case "5":
+            today = "f"
+        case "6":
+            today = "s"
+        default:
+            today = "incorrect"
+        }
+        
+        // return the single letter determining which day it is
+        return today
+    }
+    
     /********************************************
      * getFirebaseData
      *
@@ -196,52 +234,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         mapView.showsUserLocation = true
         
         // after getting the user's location, find the closest shuttle stop to them
-        checkRegion()
         getLocations()
-    }
-    
-    /********************************************
-     * checkRegion
-     *
-     * This function calculates the region of the
-     * user.
-     *
-     * STILL WIP -- geofencing
-     ********************************************/
-    func checkRegion() {
-        // Your coordinates go here (lat, lon)
-        let geofenceRegionCenter = CLLocationCoordinate2D(
-            latitude: userLocation.coordinate.latitude,
-            longitude: userLocation.coordinate.longitude
-        )
-        
-        /* Create a region centered on desired location,
-         choose a radius for the region (in meters)
-         choose a unique identifier for that region */
-        let geofenceRegion = CLCircularRegion(
-            center: geofenceRegionCenter,
-            radius: 500,
-            identifier: "UniqueIdentifier"
-        )
-        
-        print("GEOFENCE")
-        geofenceRegion.notifyOnEntry = true
-        geofenceRegion.notifyOnExit = true
-        
-        self.locationManager.startMonitoring(for: geofenceRegion)
-    }
-    
-    /********************************************
-     * locationManager
-     *
-     * STILL WIP - Geofencing
-     ********************************************/
-    func locationManager(_ manager: CLLocationManager, didEnterRegion region: CLRegion) {
-        if region is CLCircularRegion {
-            print("Welcome to Playa Grande! If the waves are good, you can try surfing!")
-        }
-        print("WORKKKKK")
-        //Good place to schedule a local notification
     }
     
     /********************************************
@@ -279,62 +272,16 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                             locations.append((name: location.key,
                                               location: CLLocation.init(latitude: lat, longitude: lon)))
                         }
-                        // make a random location that is far, far away
-                        var tempClosest = ("No where", CLLocation.init(latitude: 24.8560, longitude: -12.7739), 1000000000.00)
-                        for shuttleStop in locations {
-                            // calculate the distance to the shuttle location from the user's current location
-                            let distance = [(self.userLocation? .distance(from: shuttleStop.1))!]
-                            // if the location being checked is closer, assign it as the closest
-                            if (distance[0] < tempClosest.2) {
-                                // (shuttle stop name, coordinates of the stop, how far to the stop)
-                                tempClosest = (shuttleStop.0, shuttleStop.1, distance[0])
-                            }
-                        }
+
                         DispatchQueue.main.async {
-                            // set the member variables
-                            self.locations = locations
-                            self.closestLocation = tempClosest
-//                            print("Closest Location: \(String(describing: self.closestLocation))")
-                            // after finding the closest location, calculate walking time
-                            self.convertStringsToTimes()
+                            self.locations = locations // set the member variables
+                            self.convertStringsToTimes() // after finding the closest location, calculate walking time
                         }
                     }
                 }
             }
         }
     }
-    
-
-    /* These next to methods are dependent on each other. Code them carefully. */
-    
-    // Based on the users location, calculate the walking time to the closest shuttle stop.
-//    func getWalkingTime() {
-//        // set the source and destination coordinates
-//        let sourceCoordinates = CLLocationCoordinate2D(latitude: userLocation.coordinate.latitude,
-//                                                       longitude: userLocation.coordinate.longitude)
-//        let destinationCoordinates = CLLocationCoordinate2D(latitude: closestLocation.1.coordinate.latitude,
-//                                                            longitude: closestLocation.1.coordinate.longitude)
-//
-//        // create a request for Apple Servers to calculate the ETA to walk to the closest shuttle stop
-//        let request = MKDirections.Request()
-//        request.source = MKMapItem(placemark: MKPlacemark(coordinate: sourceCoordinates, addressDictionary: nil))
-//        request.destination = MKMapItem(placemark: MKPlacemark(coordinate: destinationCoordinates, addressDictionary: nil))
-//        request.requestsAlternateRoutes = true
-//        request.transportType = .walking
-//
-//        // make the request and calculate the ETA
-//        let directions = MKDirections(request: request)
-//        directions.calculateETA(completionHandler: { response, error in
-//            // if the request was successful and there is an arrival time
-//            if ((response?.expectedTravelTime) != nil) {
-//                self.travelTime = (response?.expectedTravelTime)!
-//                print("ETA: \(String(describing: self.travelTime))")
-//                self.convertStringsToTimes()
-//            } else {
-//                print("Error calculating ETA!")
-//            }
-//        })
-//    }
     
     func convertStringsToTimes() {
         DispatchQueue.global().async {
