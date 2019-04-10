@@ -15,10 +15,13 @@ import CoreLocation
 class FirstViewController: UIViewController, CLLocationManagerDelegate {
     
     //components
+    @IBOutlet weak var displayLocation1: UITextField!
+    @IBOutlet weak var displayLocation2: UITextField!
+    @IBOutlet weak var displayLocation3: UITextField!
     @IBOutlet weak var mapView: MKMapView!     // the map
-    @IBOutlet weak var displayTime1: UILabel!  // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime2: UILabel!  // the display time for next suggested shuttle time
-    @IBOutlet weak var displayTime3: UILabel!  // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime1: UITextField! // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime2: UITextField! // the display time for next suggested shuttle time
+    @IBOutlet weak var displayTime3: UITextField! // the display time for next suggested shuttle time
     @IBOutlet weak var moreInfoBtn: UIButton!  // the button for the user to get more times
     @IBOutlet var safeAreaView: UIView!        // the safe area component
     @IBOutlet weak var tableView: UITableView! // the component that holds all of the times
@@ -40,7 +43,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     var travelTime: Double! // walking time in minutes to closest shuttle stop
     var shuttleCoordinates: [Double]! // the shuttle stop coordinates
     var fullSchedule: [Dictionary<String, Any>]! // the full schedule from firebase
-    var schedule: [(String, Int)]! // the shuttle schedule
+    var schedule: [(String, Int, Dictionary<String, Any>)]! // the shuttle schedule
     lazy var db = Firestore.firestore() // the database
     var width: CGFloat = 0.0 //width of the screen -- will be set in btnClick functions
     
@@ -81,29 +84,24 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     }
   
     func getWeekday() -> String {
+        // This currently isn't getting the correct timezone so it says it's a new day when it isn't yet
         let date = Date()
         let dateFormatter = DateFormatter()
         
         // get the day number
         dateFormatter.dateFormat = "e"
         let currentDateString: String = dateFormatter.string(from: date)
+        
         // write switch statement to assign/return day string (eg. r, t, s, m)
         var today = ""
         switch currentDateString {
-        case "1":
-            today = "m"
-        case "2":
-            today = "t"
-        case "3":
-            today = "w"
-        case "4":
-            today = "h"
-        case "5":
-            today = "f"
-        case "6":
-            today = "s"
-        default:
-            today = "incorrect"
+            case "1": today = "m"
+            case "2": today = "t"
+            case "3": today = "w"
+            case "4": today = "r"
+            case "5": today = "f"
+            case "6": today = "s"
+            default: today = "incorrect"
         }
         
         // return the single letter determining which day it is
@@ -130,6 +128,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                                 let arrayTimes:[Dictionary<String,Any>] = times as! [Dictionary<String, Any>]
                                 for time in arrayTimes {
                                     myTimes.append(time)
+//                                    print(time)
                                 }
                             }
                         }
@@ -285,7 +284,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     
     func convertStringsToTimes() {
         DispatchQueue.global().async {
-            var secondsTupleArray = [(String, Int)]()
+            var secondsTupleArray = [(String, Int, Dictionary<String, Any>)]()
             for scheduleItem in self.fullSchedule {
                 let time = scheduleItem["time"] as! String
                 // get the first two and last two characters of the string
@@ -307,7 +306,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
                 let displayString = "\(hourString):\(minuteString) \(postfix)"
 
                 // add the new display string and the calculated seconds to the temp schedule
-                secondsTupleArray.append((displayString, secondsSinceStartOfDay))
+                secondsTupleArray.append((displayString, secondsSinceStartOfDay, scheduleItem))
             }
 
             DispatchQueue.main.async {
@@ -329,10 +328,10 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             let currentTimeSeconds = dateComponents.hour! * 3600 + dateComponents.minute! * 60
             
             // the default next time says the shuttle isn't running
-            var nextTimes: [(String, Int)] = []
+            var nextTimes: [(String, Int, Dictionary<String, Any>)] = []
             var foundNextTime = 0;
             
-            // find the next shuttle time
+            // find the next 3 shuttle times
             for scheduleTime in self.schedule {
                 if (foundNextTime < 3 && Double(scheduleTime.1) > Double(currentTimeSeconds)) {//} + self.travelTime) {
                     nextTimes.append(scheduleTime)
@@ -341,21 +340,27 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
             }
             DispatchQueue.main.async {
                 self.displayTimes(nextTimes: nextTimes)
+                print(nextTimes)
             }
         }
     }
     
-    func displayTimes(nextTimes: [(String, Int)]) {
+    func displayTimes(nextTimes: [(String, Int, Dictionary<String, Any>)]) {
         // change the display font size depending on what is to be displayed
-        self.displayTime1.font = nextTimes.count > 0 ? self.displayTime1.font.withSize(45): self.displayTime1.font.withSize(25)
-        self.displayTime2.font = nextTimes.count > 1 ? self.displayTime2.font.withSize(45): self.displayTime2.font.withSize(25)
-        self.displayTime3.font = nextTimes.count > 2 ? self.displayTime3.font.withSize(45): self.displayTime3.font.withSize(25)
-        
+        self.displayTime1.font = nextTimes.count > 0 ? self.displayTime1.font!.withSize(23): self.displayTime1.font!.withSize(25)
+        self.displayTime2.font = nextTimes.count > 1 ? self.displayTime2.font!.withSize(23): self.displayTime2.font!.withSize(25)
+        self.displayTime3.font = nextTimes.count > 2 ? self.displayTime3.font!.withSize(23): self.displayTime3.font!.withSize(25)
+
         // display the suggested shuttle time
         let shuttleStopped = "Stopped for the day"
-        self.displayTime1.text = nextTimes.count > 0 ? nextTimes[0].0 : shuttleStopped
+        self.displayLocation1.text = nextTimes.count > 0 ? "\(nextTimes[0].2["start"] as! String) ⇨ \(nextTimes[0].2["end"] as! String)" : shuttleStopped
+        self.displayLocation2.text = nextTimes.count > 1 ? "\(nextTimes[1].2["start"] as! String) ⇨ \(nextTimes[1].2["end"] as! String)" : ""
+        self.displayLocation3.text = nextTimes.count > 2 ? "\(nextTimes[2].2["start"] as! String) ⇨ \(nextTimes[2].2["end"] as! String)" : ""
+
+        self.displayTime1.text = nextTimes.count > 0 ? nextTimes[0].0 : ""
         self.displayTime2.text = nextTimes.count > 1 ? nextTimes[1].0 : ""
         self.displayTime3.text = nextTimes.count > 2 ? nextTimes[2].0 : ""
+        
     }
 }
 
@@ -366,4 +371,3 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
 // get times
 // sort times
 // get three relevant times
-
