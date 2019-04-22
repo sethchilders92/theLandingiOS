@@ -66,6 +66,8 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         settings.areTimestampsInSnapshotsEnabled = true
         db.settings = settings
         
+//        self.displayLocation1.borderStyle = UITextBorderStyleRoundedRect
+        
         // get the weekday's symbolic letter to help filter times down as seen below
         let weekday = getWeekday()
 
@@ -231,7 +233,7 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
         mapView.mapType = .satellite
         mapView.setRegion(region, animated: true)
         mapView.showsUserLocation = true
-        
+
         // after getting the user's location, find the closest shuttle stop to them
         getLocations()
     }
