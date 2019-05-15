@@ -27,14 +27,12 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     @IBOutlet weak var tableView: UITableView! // the component that holds all of the times
     
     //component constraints to allow for "page transitions"
-    @IBOutlet weak var locationConstraint: NSLayoutConstraint!
-    @IBOutlet weak var displayTime1Constraint: NSLayoutConstraint!
-    @IBOutlet weak var displayTime2Constraint: NSLayoutConstraint!
-    @IBOutlet weak var displayTime3Constraint: NSLayoutConstraint!
-    @IBOutlet weak var mapConstraint: NSLayoutConstraint!
     @IBOutlet var moreInfoBtnConstraint: UIView!
     @IBOutlet weak var tableViewConstraint: NSLayoutConstraint!
     
+    /********************************************
+    * Member Variables
+    ********************************************/
     var locationManager:CLLocationManager! // location manager
     var userLocation:CLLocation! // user location
     var locations: [(name: String, location: CLLocation)]! // an array of all the locations
@@ -149,7 +147,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
      * moving over.
      ********************************************/
     @IBAction func moreInfoBtnClick(_ sender: UIButton) {
+        print("constant before: \(tableViewConstraint.constant)")
         tableViewConstraint.constant = 0
+        print("constant after: \(tableViewConstraint.constant)")
         UIView.animate(withDuration: 0.5) {
             self.view.layoutIfNeeded()
             self.moreInfoBtn.alpha = 0
@@ -168,9 +168,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         if tableViewConstraint.constant == 0 {
             let touch: UITouch? = touches.first
-            
+            print("made ittttt")
             if touch?.view != tableView {
-                tableViewConstraint.constant = width
+                tableViewConstraint.constant = self.width
                 UIView.animate(withDuration: 0.5) {
                     self.view.layoutIfNeeded()
                     self.moreInfoBtn.alpha = 1
@@ -189,7 +189,9 @@ class FirstViewController: UIViewController, CLLocationManagerDelegate {
     @IBAction func swipeAway(_ sender: UISwipeGestureRecognizer) {
         if tableViewConstraint.constant == 0 &&
             sender.state == .ended {
+            print("constant before in swipeAway: \(tableViewConstraint.constant)")
             tableViewConstraint.constant = width
+            print("constant after in swipeAway: \(tableViewConstraint.constant)")
             UIView.animate(withDuration: 0.5) {
                 self.view.layoutIfNeeded()
                 self.moreInfoBtn.alpha = 1
